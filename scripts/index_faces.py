@@ -18,9 +18,10 @@ def index_face(photo, bucket, collection_id, external_image_id):
     )
     return response['FaceRecords']
 
-photo = 'index/image1.jpg'
+photo = 'index/image20.jpg'
 bucket = 'kaung-test-bucket'
 collection_id = 'kaung-test-collection'
-external_image_id = 'jurgen klopp'
+external_image_id = 'jurgen_klopp'
 
 index_face(photo, bucket, collection_id, external_image_id)
+print('success')

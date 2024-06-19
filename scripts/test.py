@@ -1,27 +1,5 @@
 import boto3
-import json
-
-def index_face(photo, bucket, collection_id, external_image_id):
-    session = boto3.Session(profile_name='default')
-    rekognition_client = session.client('rekognition')
-
-    response = rekognition_client.index_faces(
-        CollectionId=collection_id,
-        Image={
-            'S3Object': {
-                'Bucket': bucket,
-                'Name': photo,
-            }
-        },
-        ExternalImageId=external_image_id,
-        DetectionAttributes=['ALL']
-    )
-    
-    # Print out the response for debugging
-    print("Index Faces Response:")
-    print(json.dumps(response, indent=4, sort_keys=True))
-
-    return response['FaceRecords']
+import re
 
 def detect_faces(photo, bucket):
     session = boto3.Session(profile_name='default')
@@ -31,12 +9,22 @@ def detect_faces(photo, bucket):
         Image={'S3Object': {'Bucket': bucket, 'Name': photo}},
         Attributes=['ALL']
     )
-    
-    # Print out the response for debugging
-    print("Detect Faces Response:")
-    print(json.dumps(response, indent=4, sort_keys=True))
-
     return response['FaceDetails']
+
+def index_faces(photo, bucket, collection_id):
+    session = boto3.Session(profile_name='default')
+    rekognition_client = session.client('rekognition')
+
+    # Sanitize ExternalImageId
+    sanitized_external_image_id = re.sub(r'[^a-zA-Z0-9_.\-:]', '_', photo)
+
+    response = rekognition_client.index_faces(
+        CollectionId=collection_id,
+        Image={'S3Object': {'Bucket': bucket, 'Name': photo}},
+        ExternalImageId=sanitized_external_image_id,
+        DetectionAttributes=['ALL']
+    )
+    return response['FaceRecords']
 
 def search_faces_by_image(photo, bucket, collection_id):
     session = boto3.Session(profile_name='default')
@@ -45,45 +33,28 @@ def search_faces_by_image(photo, bucket, collection_id):
     response = rekognition_client.search_faces_by_image(
         CollectionId=collection_id,
         Image={'S3Object': {'Bucket': bucket, 'Name': photo}},
-        MaxFaces=5,
-        FaceMatchThreshold=70  # Lowered threshold for better matching
+        FaceMatchThreshold=95,
+        MaxFaces=1
     )
-    
-    # Print out the response for debugging
-    print("Search Faces by Image Response:")
-    print(json.dumps(response, indent=4, sort_keys=True))
-
     return response['FaceMatches']
 
-def main():
-    index_photo = 'index/image1.jpg'
-    group_photo = 'index/sample_images/team_photo.jpg'
-    bucket = 'kaung-test-bucket'
-    collection_id = 'Kaung-Test-Collection'
-    external_image_id = 'person_1'
+# Define your S3 bucket and image paths
+team_photo = 'index/sample_images/team_photo.jpg'
+individual_photo = 'index/image2.jpg'
+bucket = 'kaung-test-bucket'
+collection_id = 'kaung-test-collection'
 
-    # Index the face
-    indexed_faces = index_face(index_photo, bucket, collection_id, external_image_id)
-    if not indexed_faces:
-        print("No faces were indexed. Please check the input image.")
-        return
+# Index faces in the team photo
+# team_faces = index_faces(team_photo, bucket, collection_id)
+# print(f"Indexed {len(team_faces)} faces from team photo")
 
-    # Detect faces in the group photo
-    faces = detect_faces(group_photo, bucket)
-    print(f"Detected {len(faces)} faces")
+# Search for the individual face in the collection
+face_matches = search_faces_by_image(individual_photo, bucket, collection_id)
 
-    if not faces:
-        print("No faces detected in the group photo.")
-        return
-
-    # Search for the indexed face in the group photo
-    matches = search_faces_by_image(group_photo, bucket, collection_id)
-    if matches:
-        for match in matches:
-            print("Match found:")
-            print(json.dumps(match, indent=4, sort_keys=True))
-    else:
-        print("No matches found.")
-
-if __name__ == "__main__":
-    main()
+if face_matches:
+    matched_face_id = face_matches[0]['Face']['FaceId']
+    print(f"Matched FaceId: {matched_face_id}")
+    print(f"The face in {individual_photo} is included in {team_photo}")
+else:
+    print("No matching face found")
+    print(f"The face in {individual_photo} is not included in {team_photo}")
