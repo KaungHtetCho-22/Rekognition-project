@@ -1,0 +1,31 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Resources:
+
+  TestBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: kaunghtetcho-test-bucket
+      NotificationConfiguration:
+        LambdaConfigurations:
+          - Event: 's3:ObjectCreated:*'
+            Function: !GetAtt TestFunction.Arn
+
+  TestCollection:
+    Type: AWS::Rekognition::Collection
+    Properties:
+      CollectionId: kaung-test-collection
+
+  TestTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: testTable
+      AttributeDefinitions:
+        - AttributeName: RekognitionId
+          AttributeType: S
+      KeySchema:
+        - AttributeName: RekognitionId
+          KeyType: HASH
+      ProvisionedThroughput:
+        ReadCapacityUnits: 5
+        WriteCapacityUnits: 5
+  

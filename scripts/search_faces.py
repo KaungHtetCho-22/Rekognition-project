@@ -13,7 +13,7 @@ def search_faces_by_image(photo, bucket, collection_id):
     return response['FaceMatches']
 
 photo = 'index/sample_images/team_photo.jpg'
-collection_id = 'Kaung-Test-Collection'
+collection_id = 'kaung-test-collection'
 bucket = 'kaung-test-bucket'
 
 matches = search_faces_by_image(photo, bucket, collection_id)

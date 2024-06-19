@@ -20,7 +20,7 @@ def index_face(photo, bucket, collection_id, external_image_id):
 
 photo = 'index/image1.jpg'
 bucket = 'kaung-test-bucket'
-collection_id = 'Kaung-Test-Collection'
-external_image_id = 'person_1'
+collection_id = 'kaung-test-collection'
+external_image_id = 'jurgen klopp'
 
 index_face(photo, bucket, collection_id, external_image_id)

@@ -1,0 +1,115 @@
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Facial Recognition App</title>
+        <style>
+            body {
+                font-family: Arial, sans-serif;
+                margin: 0;
+                padding: 0;
+                background-color: #f0f0f0;
+            }
+
+            h1 {
+                text-align: center;
+                color: #333;
+            }
+
+            #recognition-form {
+                max-width: 400px;
+                margin: 0 auto;
+                padding: 20px;
+                background-color: #fff;
+                border-radius: 8px;
+                box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+            }
+
+            label {
+                display: block;
+                margin-bottom: 10px;
+                color: #333;
+            }
+
+            input[type="file"] {
+                display: block;
+                margin-bottom: 20px;
+            }
+
+            button[type="submit"] {
+                display: block;
+                width: 100%;
+                padding: 10px;
+                background-color: #007bff;
+                color: #fff;
+                border: none;
+                border-radius: 4px;
+                cursor: pointer;
+                transition: background-color 0.3s ease;
+            }
+
+            button[type="submit"]:hover {
+                background-color: #0056b3;
+            }
+
+            #recognition-result {
+                max-width: 400px;
+                margin: 20px auto;
+                padding: 20px;
+                background-color: #fff;
+                border-radius: 8px;
+                box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+            }
+
+            p {
+                color: #333;
+                margin: 0;
+            }
+        </style>
+    </head>
+    <body>
+        <h1>Facial Recognition</h1>
+
+        <form id="recognition-form" enctype="multipart/form-data">
+            <label for="image">Upload Image:</label>
+            <input type="file" id="image" name="image" accept="image/*" required>
+            <button type="submit">Recognize</button>
+        </form>
+
+        <div id="recognition-result">
+            <!-- Recognition result will be updated dynamically here -->
+        </div>
+
+        <script>
+            const form = document.getElementById('recognition-form');
+            const resultDiv = document.getElementById('recognition-result');
+
+            form.addEventListener('submit', async (event) => {
+                event.preventDefault();
+
+                const formData = new FormData(form);
+
+                resultDiv.innerHTML = 'Processing...';
+
+                try {
+                    const response = await fetch('/recognize', {
+                        method: 'POST',
+                        body: formData
+                    });
+
+                    const data = await response.json();
+
+                    if (data.status === 'recognized') {
+                        resultDiv.innerHTML = `<p>Recognized: ${data.name}</p>`;
+                    } else {
+                        resultDiv.innerHTML = `<p>${data.status}</p>`;
+                    }
+                } catch (error) {
+                    console.error(error);
+                    resultDiv.innerHTML = 'An error occurred';
+                }
+            });
+        </script>
+    </body>
+    </html>
