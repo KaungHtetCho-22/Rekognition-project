@@ -1,31 +1,196 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Resources:
+Description: 'Face Indexing and Storage System'
 
-  TestBucket:
+Parameters:
+  BucketName:
+    Type: String
+    Description: Name of the S3 bucket to create
+
+  CollectionName:
+    Type: String
+    Description: Name of the Rekognition Collection to create
+
+  TableName:
+    Type: String
+    Description: Name of the DynamoDB table to create
+
+Resources:
+  S3Bucket:
     Type: AWS::S3::Bucket
     Properties:
-      BucketName: kaunghtetcho-test-bucket
+      BucketName: !Ref BucketName
       NotificationConfiguration:
         LambdaConfigurations:
           - Event: 's3:ObjectCreated:*'
-            Function: !GetAtt TestFunction.Arn
+            Function: !GetAtt FaceIndexingLambda.Arn
+    DependsOn: S3BucketLambdaInvokePermission
 
-  TestCollection:
-    Type: AWS::Rekognition::Collection
-    Properties:
-      CollectionId: kaung-test-collection
-
-  TestTable:
+  DynamoDBTable:
     Type: AWS::DynamoDB::Table
     Properties:
-      TableName: testTable
+      TableName: !Ref TableName
       AttributeDefinitions:
         - AttributeName: RekognitionId
           AttributeType: S
       KeySchema:
         - AttributeName: RekognitionId
           KeyType: HASH
-      ProvisionedThroughput:
-        ReadCapacityUnits: 5
-        WriteCapacityUnits: 5
-  
+      BillingMode: PAY_PER_REQUEST
+
+  RekognitionCollection:
+    Type: Custom::RekognitionCollection
+    Properties:
+      ServiceToken: !GetAtt RekognitionCollectionLambda.Arn
+      CollectionId: !Ref CollectionName
+
+  RekognitionCollectionLambda:
+    Type: AWS::Lambda::Function
+    Properties:
+      Handler: index.handler
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Code:
+        ZipFile: |
+          import cfnresponse
+          import boto3
+
+          def handler(event, context):
+            rekognition = boto3.client('rekognition')
+            responseData = {}
+            try:
+              if event['RequestType'] == 'Create':
+                rekognition.create_collection(CollectionId=event['ResourceProperties']['CollectionId'])
+              elif event['RequestType'] == 'Delete':
+                rekognition.delete_collection(CollectionId=event['ResourceProperties']['CollectionId'])
+              cfnresponse.send(event, context, cfnresponse.SUCCESS, responseData)
+            except Exception as e:
+              cfnresponse.send(event, context, cfnresponse.FAILED, responseData)
+      Runtime: python3.8
+      Timeout: 30
+
+  FaceIndexingLambda:
+    Type: AWS::Lambda::Function
+    Properties:
+      Handler: index.handler
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Code:
+        ZipFile: |
+          import json
+          import boto3
+          import os
+
+          def handler(event, context):
+              s3 = boto3.client('s3')
+              rekognition = boto3.client('rekognition')
+              dynamodb = boto3.resource('dynamodb')
+              
+              collection_id = os.environ['COLLECTION_ID']
+              table_name = os.environ['TABLE_NAME']
+              
+              bucket = event['Records'][0]['s3']['bucket']['name']
+              key = event['Records'][0]['s3']['object']['key']
+              
+              try:
+                  response = s3.head_object(Bucket=bucket, Key=key)
+                  metadata = response.get('Metadata', {})
+                  
+                  if not metadata:
+                      print(f"No metadata found for {key}. Skipping.")
+                      return
+                  
+                  external_image_id = os.path.splitext(os.path.basename(key))[0]
+                  external_image_id = ''.join(c for c in external_image_id if c.isalnum() or c in ['_', '.', '-', ':'])
+                  
+                  index_response = rekognition.index_faces(
+                      CollectionId=collection_id,
+                      Image={'S3Object': {'Bucket': bucket, 'Name': key}},
+                      ExternalImageId=external_image_id,
+                      DetectionAttributes=['ALL']
+                  )
+                  
+                  table = dynamodb.Table(table_name)
+                  face_records = index_response.get('FaceRecords', [])
+                  
+                  if not face_records:
+                      print(f"No faces indexed for {key}. Skipping.")
+                      return
+                  
+                  for face in face_records:
+                      face_id = face['Face']['FaceId']
+                      table.put_item(
+                          Item={
+                              'RekognitionId': face_id,
+                              'face_id': face_id,
+                              'name': metadata.get('name', ''),
+                              'position': metadata.get('position', ''),
+                              'nationality': metadata.get('nationality', ''),
+                              'transfer_fees': metadata.get('transfer_fees', ''),
+                              's3_object_key': key,
+                              'external_image_id': external_image_id
+                          }
+                      )
+                  
+                  print(f"Successfully processed {key}")
+                  
+              except Exception as e:
+                  print(f"Error processing {key}: {str(e)}")
+      Runtime: python3.8
+      Timeout: 60
+      Environment:
+        Variables:
+          COLLECTION_ID: !Ref CollectionName
+          TABLE_NAME: !Ref TableName
+
+  LambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: LambdaS3RekognitionDynamoDBPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:ListBucket
+                Resource:
+                  - !Sub 'arn:aws:s3:::${BucketName}'
+                  - !Sub 'arn:aws:s3:::${BucketName}/*'
+              - Effect: Allow
+                Action:
+                  - rekognition:IndexFaces
+                  - rekognition:CreateCollection
+                  - rekognition:DeleteCollection
+                Resource: '*'
+              - Effect: Allow
+                Action:
+                  - dynamodb:PutItem
+                Resource: !GetAtt DynamoDBTable.Arn
+
+  S3BucketLambdaInvokePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref FaceIndexingLambda
+      Action: lambda:InvokeFunction
+      Principal: s3.amazonaws.com
+      SourceAccount: !Ref 'AWS::AccountId'
+      SourceArn: !Sub 'arn:aws:s3:::${BucketName}'
+
+Outputs:
+  S3BucketName:
+    Description: Name of the created S3 bucket
+    Value: !Ref S3Bucket
+  DynamoDBTableName:
+    Description: Name of the created DynamoDB table
+    Value: !Ref DynamoDBTable
+  RekognitionCollectionId:
+    Description: ID of the created Rekognition Collection
+    Value: !Ref CollectionName

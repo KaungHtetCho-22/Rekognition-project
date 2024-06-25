@@ -1,6 +1,6 @@
 import boto3
 import io
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageDraw
 
 def detect_faces(photo, bucket):
     session = boto3.Session(profile_name='default')
@@ -24,13 +24,7 @@ def search_faces_by_image(photo, bucket, collection_id):
     )
     return response['FaceMatches']
 
-def get_face_info_from_dynamodb(face_id, table_name):
-    dynamodb = boto3.resource('dynamodb')
-    table = dynamodb.Table(table_name)
-    response = table.get_item(Key={'RekognitionId': face_id})
-    return response.get('Item', {})
-
-def draw_bounding_box_with_info(image_bytes, bounding_box, face_info, confidence, box_color='blue', expand_factor=0.5):
+def draw_bounding_box(image_bytes, bounding_box, expand_factor=0.5):
     image = Image.open(io.BytesIO(image_bytes))
     draw = ImageDraw.Draw(image)
 
@@ -46,15 +40,9 @@ def draw_bounding_box_with_info(image_bytes, bounding_box, face_info, confidence
     right = min(width, left + (bounding_box['Width'] * width) + (2 * expand_x))
     bottom = min(height, top + (bounding_box['Height'] * height) + (2 * expand_y))
 
-    draw.rectangle([left, top, right, bottom], outline=box_color, width=3)
-
-    # Add text below the bounding box
-    font = ImageFont.load_default()
-    text = f"{face_info.get('name', 'Unknown')}\n{face_info.get('position', '')}\nConfidence: {confidence:.2f}%"
-    draw.text((left, bottom + 5), text, fill=box_color, font=font)  # Text color matches bounding box color
+    draw.rectangle([left, top, right, bottom], outline='red', width=3)
 
     return image
-
 
 def get_image_from_s3(bucket, photo):
     s3 = boto3.client('s3')
@@ -76,18 +64,16 @@ def calculate_iou(box1, box2):
     return intersection / union if union > 0 else 0
 
 def main():
-    team_photo = 'sample_images/ss_mac.jpg'
+    team_photo = 'sample_images/ss_cody.jpg'
     individual_photo = 'sample_images/image1.jpg'
     bucket = 'kaung-test-bucket'
     collection_id = 'kaung-test-collection'
-    dynamodb_table = 'kaung-testTable'
 
     # Search for the individual face in the collection
     face_matches = search_faces_by_image(individual_photo, bucket, collection_id)
 
     if face_matches:
         matched_face = face_matches[0]['Face']
-        confidence = face_matches[0]['Similarity']
         print(f"Matched FaceId: {matched_face['FaceId']}")
         print(f"The face in {individual_photo} is included in {team_photo}")
 
@@ -112,21 +98,13 @@ def main():
             # Get the team photo from S3
             team_photo_bytes = get_image_from_s3(bucket, team_photo)
             
-            # Get face info from DynamoDB
-            face_info = get_face_info_from_dynamodb(matched_face['FaceId'], dynamodb_table)
-            
-            # Draw bounding box on the image with face info and confidence
-            image_with_box = draw_bounding_box_with_info(team_photo_bytes, best_match['BoundingBox'], face_info, confidence)
+            # Draw bounding box on the image
+            image_with_box = draw_bounding_box(team_photo_bytes, best_match['BoundingBox'])
             
             # Save the image with bounding box
-            output_path = 'eval.jpg'
+            output_path = 'team_photo_with_box.jpg'
             image_with_box.save(output_path)
             print(f"Image with bounding box saved as {output_path}")
-            
-            # Print face info
-            print("Face Information:")
-            for key, value in face_info.items():
-                print(f"{key}: {value}")
         else:
             print("Matched face not found in the team photo")
     else:
