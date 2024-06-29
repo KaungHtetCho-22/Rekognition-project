@@ -76,8 +76,8 @@ def calculate_iou(box1, box2):
     return intersection / union if union > 0 else 0
 
 def main():
-    team_photo = 'sample_images/ss_mac.jpg'
-    individual_photo = 'sample_images/image1.jpg'
+    team_photo = 'sample_images/test.jpg'
+    individual_photo = 'sample_images/image3.jpg'
     bucket = 'kaung-test-bucket'
     collection_id = 'kaung-test-collection'
     dynamodb_table = 'kaung-testTable'

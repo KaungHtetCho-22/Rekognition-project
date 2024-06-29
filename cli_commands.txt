@@ -5,6 +5,8 @@ aws dynamodb create-table --table-name kaung-testTable \
 --region us-east-1
 
 aws dynamodb delete-table --table-name kaung-test-table --region us-east-1
+
+aws dynamodb list-table --region us-east-1
 -------------------------------------------------------------------------------------
 aws rekognition list-collections --region us-east-1
 
@@ -14,4 +16,23 @@ aws rekognition create-collection --collection-id kaung-test-collection --region
 -------------------------------------------------------------------------------------
 aws s3 mb s3://kaung-test-bucket --region us-east-1
 aws s3 rb s3://kaung-test-bucket --force
+-------------------------------------------------------------------------------------
+aws cloudformation create-stack --stack-name test-stack \
+--template-body file://cloudformation_v3.yaml \
+--parameters ParameterKey=BucketName,ParameterValue=kaung-test-bucket \
+ParameterKey=CollectionName,ParameterValue=kaung-test-collection \
+ParameterKey=TableName,ParameterValue=kaung-testTable \
+--capabilities CAPABILITY_NAMED_IAM
 
+aws cloudformation describe-stacks --stack-name test-stack
+
+aws cloudformation describe-stacks --stack-name test-stack --query 'Stacks[0].Outputs[?OutputKey==ApiGatewayUrl].OutputValue' --output text
+
+aws cloudformation describe-stacks --stack-name test-stack --query 'Stacks[0].Outputs'
+
+aws cloudformation delete-stack --stack-name test-stack
+-------------------------------------------------------------------------------------
+aws lambda invoke --function-name test-stack-FaceIndexingLambda-2dsMVOWCYlEX \
+--payload '{"key":"value"}' response.json
+
+curl -X GET https://vs16ogc6jj.execute-api.us-east-1.amazonaws.com/prod/faces

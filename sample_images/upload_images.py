@@ -37,33 +37,40 @@ def upload_multiple_images(image_folder, bucket, player_data):
 
 # Usage example
 player_data = [
+    # {
+    #     "file_name": "image1.jpg",
+    #     "name": "Allison",
+    #     "position": "Goal",
+    #     "nationality": "Brasil",
+    #     "transfer_fees": 50000000
+    # },
+    # {
+    #     "file_name": "image2.jpg",
+    #     "name": "Robertson",
+    #     "position": "Defender",
+    #     "nationality": "Scotland",
+    #     "transfer_fees": 40000000
+    # },
+    # {
+    #     "file_name": "image3.jpg",
+    #     "name": "Allister",
+    #     "position": "Midfielder",
+    #     "nationality": "Argentina",
+    #     "transfer_fees": 35000000
+    # },
+    # {
+    #     "file_name": "image20.jpg",
+    #     "name": "Jurgen",
+    #     "position": "Coach",
+    #     "nationality": "Germany",
+    #     "transfer_fees": 765000000
+    # },
     {
-        "file_name": "image1.jpg",
-        "name": "Allison",
-        "position": "Goal",
-        "nationality": "Brasil",
-        "transfer_fees": 50000000
-    },
-    {
-        "file_name": "image2.jpg",
-        "name": "Robertson",
-        "position": "Defender",
-        "nationality": "Scotland",
-        "transfer_fees": 40000000
-    },
-    {
-        "file_name": "image3.jpg",
-        "name": "Allister",
-        "position": "Midfielder",
-        "nationality": "Argentina",
-        "transfer_fees": 35000000
-    },
-    {
-        "file_name": "image20.jpg",
-        "name": "Jurgen",
-        "position": "Coach",
-        "nationality": "Germany",
-        "transfer_fees": 765000000
+        "file_name": "image5.jpg",
+        "name": "Arnold",
+        "position": "Defensive",
+        "nationality": "Englind",
+        "transfer_fees": 2344000000
     }
 ]
 

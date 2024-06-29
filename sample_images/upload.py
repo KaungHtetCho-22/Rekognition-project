@@ -13,11 +13,13 @@ images = [
     # ('image20.jpg', 'Jurgen Klopp'),
     # ('image24.jpg', 'Hp'),
     # ('team_photo.jpg', 'team')
-    # ('test.jpg', 'test'),
+    # ('test.jpg', 'test')
     # ('allison.jpg', 'alli'),
-    # ('ss_ab1.jpg', 'ab1_ss')
-    # ('ss_cody.jpg', 'ss_cody,'),
+    ('ss_ab1.jpg', 'ab1_ss'),
+    ('ss_cody.jpg', 'ss_cody,'),
     ('ss_mac.jpg', 'ss_mac')
+    # ('m_ed.jpg', 'm_ed')
+    # ('ss_cody.jpg', 'ss_cody')
 ]
 
 print('start uploading')
